@@ -1,0 +1,469 @@
+%matplotlib inline
+
+# Dependencies and Setup
+import matplotlib.pyplot as plt
+import pandas as pd
+import scipy.stats as st
+import numpy as np
+from scipy.stats import linregress
+
+# Study data files
+mouse_metadata_path = "data/Mouse_metadata.csv"
+study_results_path = "data/Study_results.csv"
+
+# Read the mouse data and the study results
+mouse_metadata = pd.read_csv(mouse_metadata_path)
+study_results = pd.read_csv(study_results_path)
+
+# Combine the data into a single dataset
+pymaceuticals = pd.merge(mouse_metadata,study_results, how='inner', on='Mouse ID')
+pymaceuticals_df = pd.DataFrame(pymaceuticals)
+pymaceuticals_df
+
+# Display the data table for preview
+Mouse ID	Drug Regimen	Sex	Age_months	Weight (g)	Timepoint	Tumor Volume (mm3)	Metastatic Sites
+0	k403	Ramicane	Male	21	16	0	45.000000	0
+1	k403	Ramicane	Male	21	16	5	38.825898	0
+2	k403	Ramicane	Male	21	16	10	35.014271	1
+3	k403	Ramicane	Male	21	16	15	34.223992	1
+4	k403	Ramicane	Male	21	16	20	32.997729	1
+...	...	...	...	...	...	...	...	...
+1888	z969	Naftisol	Male	9	30	25	63.145652	2
+1889	z969	Naftisol	Male	9	30	30	65.841013	3
+1890	z969	Naftisol	Male	9	30	35	69.176246	4
+1891	z969	Naftisol	Male	9	30	40	70.314904	4
+1892	z969	Naftisol	Male	9	30	45	73.867845	4
+1893 rows × 8 columns
+
+# Checking the number of mice.
+mouse_count = pymaceuticals_df["Mouse ID"].count()
+mouse_count
+
+1893
+
+# Getting the duplicate mice by ID number that shows up for Mouse ID and Timepoint. 
+
+duplicate_rows = pymaceuticals_df[pymaceuticals_df.duplicated(['Mouse ID', 'Timepoint'])]
+duplicate_rows
+
+Mouse ID	Drug Regimen	Sex	Age_months	Weight (g)	Timepoint	Tumor Volume (mm3)	Metastatic Sites
+909	g989	Propriva	Female	21	26	0	45.000000	0
+911	g989	Propriva	Female	21	26	5	47.570392	0
+913	g989	Propriva	Female	21	26	10	49.880528	0
+915	g989	Propriva	Female	21	26	15	53.442020	0
+917	g989	Propriva	Female	21	26	20	54.657650	1
+[30]
+
+
+
+# Optional: Get all the data for the duplicate mouse ID. 
+all_duplicate_rows = pymaceuticals_df[pymaceuticals_df.duplicated(['Mouse ID'])]
+all_duplicate_rows
+
+Mouse ID	Drug Regimen	Sex	Age_months	Weight (g)	Timepoint	Tumor Volume (mm3)	Metastatic Sites
+1	k403	Ramicane	Male	21	16	5	38.825898	0
+2	k403	Ramicane	Male	21	16	10	35.014271	1
+3	k403	Ramicane	Male	21	16	15	34.223992	1
+4	k403	Ramicane	Male	21	16	20	32.997729	1
+5	k403	Ramicane	Male	21	16	25	33.464577	1
+...	...	...	...	...	...	...	...	...
+1888	z969	Naftisol	Male	9	30	25	63.145652	2
+1889	z969	Naftisol	Male	9	30	30	65.841013	3
+1890	z969	Naftisol	Male	9	30	35	69.176246	4
+1891	z969	Naftisol	Male	9	30	40	70.314904	4
+1892	z969	Naftisol	Male	9	30	45	73.867845	4
+1644 rows × 8 columns
+
+[36]
+
+
+
+# Create a clean DataFrame by dropping the duplicate mouse by its ID.
+clean_df = pymaceuticals_df.drop_duplicates("Mouse ID")
+clean_df
+Mouse ID	Drug Regimen	Sex	Age_months	Weight (g)	Timepoint	Tumor Volume (mm3)	Metastatic Sites
+0	k403	Ramicane	Male	21	16	0	45.0	0
+10	s185	Capomulin	Female	3	17	0	45.0	0
+20	x401	Capomulin	Female	16	15	0	45.0	0
+30	m601	Capomulin	Male	22	17	0	45.0	0
+40	g791	Ramicane	Male	11	16	0	45.0	0
+...	...	...	...	...	...	...	...	...
+1858	z314	Stelasyn	Female	21	28	0	45.0	0
+1860	z435	Propriva	Female	12	26	0	45.0	0
+1863	z581	Infubinol	Female	24	25	0	45.0	0
+1873	z795	Naftisol	Female	13	29	0	45.0	0
+1883	z969	Naftisol	Male	9	30	0	45.0	0
+249 rows × 8 columns
+
+[39]
+
+
+
+# Checking the number of mice in the clean DataFrame.
+mouse_count = clean_df["Mouse ID"].count()
+mouse_count
+
+249
+Summary Statistics
+[40]
+
+
+
+# Generate a summary statistics table of mean, median, variance, standard deviation, and SEM of the tumor volume for each regimen
+
+mean = pymaceuticals_df.groupby('Drug Regimen')['Tumor Volume (mm3)'].mean()
+median = pymaceuticals_df.groupby('Drug Regimen')['Tumor Volume (mm3)'].median()
+variance = pymaceuticals_df.groupby('Drug Regimen')['Tumor Volume (mm3)'].var()
+standard_dv = pymaceuticals_df.groupby('Drug Regimen')['Tumor Volume (mm3)'].std()
+sem = pymaceuticals_df.groupby('Drug Regimen')['Tumor Volume (mm3)'].sem()
+
+summary_df = pd.DataFrame({"Mean": mean, "Median": median, "Variance": variance, "Standard Deviation": standard_dv, "SEM": sem})
+summary_df
+
+
+Mean	Median	Variance	Standard Deviation	SEM
+Drug Regimen					
+Capomulin	40.675741	41.557809	24.947764	4.994774	0.329346
+Ceftamin	52.591172	51.776157	39.290177	6.268188	0.469821
+Infubinol	52.884795	51.820584	43.128684	6.567243	0.492236
+Ketapril	55.235638	53.698743	68.553577	8.279709	0.603860
+Naftisol	54.331565	52.509285	66.173479	8.134708	0.596466
+Placebo	54.033581	52.288934	61.168083	7.821003	0.581331
+Propriva	52.322552	50.854632	42.351070	6.507770	0.512884
+Ramicane	40.216745	40.673236	23.486704	4.846308	0.320955
+Stelasyn	54.233149	52.431737	59.450562	7.710419	0.573111
+Zoniferol	53.236507	51.818479	48.533355	6.966589	0.516398
+
+
+
+# Generate a summary statistics table of mean, median, variance, standard deviation, and SEM of the tumor volume for each regimen
+
+# This method produces everything in a single groupby function
+
+Bar and Pie Charts
+[132]
+
+
+
+# Generate a bar plot showing the total number of mice for each treatment throughout the course of the study using pandas. 
+count_mice_per_tret = pymaceuticals_df.groupby(["Drug Regimen"])["Mouse ID"].count()
+
+plot_pandas = count_mice_per_tret.plot.bar(figsize=(10,3), color='b',fontsize = 12)
+plt.xlabel("Drug Regimen",fontsize = 14)
+plt.ylabel("Number of Mice",fontsize = 14)
+plt.title("Number of Mice per Treatment",fontsize = 15)
+
+plt.show()
+
+
+Drug Regimen
+Capomulin    230
+Ceftamin     178
+Infubinol    178
+Ketapril     188
+Naftisol     186
+Placebo      181
+Propriva     161
+Ramicane     228
+Stelasyn     181
+Zoniferol    182
+Name: Mouse ID, dtype: int64
+[157]
+
+
+
+# Generate a bar plot showing the total number of mice for each treatment throughout the course of the study using pyplot.
+
+# Create an array that contains the number of mice each drug regimen has
+##change drug_count into a list
+drug_count = pymaceuticals_df.groupby(["Drug Regimen"])["Mouse ID"].count().tolist()
+drug_count
+[230, 178, 178, 188, 186, 181, 161, 228, 181, 182]
+[169]
+
+
+
+plt.title("Number of Mice per Treatment",fontsize = 15)
+plt.xlabel("Drug Regimen",fontsize = 14)
+plt.ylabel("Number of Mice",fontsize = 14)
+
+plt.show()
+
+[180]
+
+
+
+## Generate a pie plot showing the distribution of female versus male mice using pandas
+
+#  Group by gender
+groupby_gender = pymaceuticals_df.groupby(["Mouse ID","Sex"])
+groupby_gender
+gender_df = pd.DataFrame(groupby_gender.size())
+
+# Create the dataframe with total count of Female and Male mice
+mouse_gender = pd.DataFrame(gender_df.groupby(["Sex"]).count())
+mouse_gender.columns = ["Total Count"]
+
+Total Count	Percentage of Sex
+Sex		
+Female	124	49.799197
+Male	125	50.200803
+[188]
+
+
+
+plt.show()
+
+
+[198]
+
+
+
+
+#Create the pie chart based upon the values 
+
+plt.pie(sizes,labels=labels, colors=colors, autopct="%1.1f%%", shadow=True, startangle=90,)
+plt.title('Male vs Female Mouse Population')
+plt.ylabel('Sex')
+#Set equal axis
+plt.axis("equal")
+
+plt.show()
+
+
+Quartiles, Outliers and Boxplots
+[200]
+
+
+
+    
+Capomulin_df = pymaceuticals_df.loc[pymaceuticals_df["Drug Regimen"] == "Capomulin",:]
+Ramicane_df = pymaceuticals_df.loc[pymaceuticals_df["Drug Regimen"] == "Ramicane", :]
+Infubinol_df = pymaceuticals_df.loc[pymaceuticals_df["Drug Regimen"] == "Infubinol", :]
+Ceftamin_df = pymaceuticals_df.loc[pymaceuticals_df["Drug Regimen"] == "Ceftamin", :]
+
+# Capomulin
+Capomulin_last = Capomulin_df.groupby('Mouse ID').max()['Timepoint']
+Capomulin_vol = pd.DataFrame(Capomulin_last)
+Capomulin_merge = pd.merge(Capomulin_vol, pymaceuticals_df, on=("Mouse ID","Timepoint"),how="left")
+
+Mouse ID	Timepoint	Drug Regimen	Sex	Age_months	Weight (g)	Tumor Volume (mm3)	Metastatic Sites
+0	b128	45	Capomulin	Female	9	22	38.982878	2
+1	b742	45	Capomulin	Male	7	21	38.939633	0
+2	f966	20	Capomulin	Male	16	17	30.485985	0
+3	g288	45	Capomulin	Male	3	19	37.074024	1
+4	g316	45	Capomulin	Female	22	22	40.159220	2
+[201]
+
+
+
+# Capomulin quartiles and IQR
+# Determine outliers using upper and lower bounds
+Capomulin_tumors = Capomulin_merge["Tumor Volume (mm3)"]
+
+quartiles =Capomulin_tumors.quantile([.25,.5,.75])
+lowerq = quartiles[0.25]
+upperq = quartiles[0.75]
+iqr = upperq-lowerq
+
+print(f"The lower quartile of Capomulin tumors: {lowerq}")
+print(f"The upper quartile of Capomulin tumors: {upperq}")
+print(f"The interquartile range of Capomulin tumors: {iqr}")
+print(f"The median of Capomulin tumors: {quartiles[0.5]} ")
+
+lower_bound = lowerq - (1.5*iqr)
+upper_bound = upperq + (1.5*iqr)
+
+print(f"Values below {lower_bound} could be outliers.")
+print(f"Values above {upper_bound} could be outliers.")
+The lower quartile of Capomulin tumors: 32.37735684
+The upper quartile of Capomulin tumors: 40.1592203
+The interquartile range of Capomulin tumors: 7.781863460000004
+The median of Capomulin tumors: 38.125164399999996 
+Values below 20.70456164999999 could be outliers.
+Values above 51.83201549 could be outliers.
+[202]
+
+
+
+# Ramicane
+
+Ramicane_last = Ramicane_df.groupby('Mouse ID').max()['Timepoint']
+Ramicane_vol = pd.DataFrame(Ramicane_last)
+Ramicane_merge = pd.merge(Ramicane_vol, pymaceuticals_df, on=("Mouse ID","Timepoint"),how="left")
+Ramicane_merge.head()
+Mouse ID	Timepoint	Drug Regimen	Sex	Age_months	Weight (g)	Tumor Volume (mm3)	Metastatic Sites
+0	a411	45	Ramicane	Male	3	22	38.407618	1
+1	a444	45	Ramicane	Female	10	25	43.047543	0
+2	a520	45	Ramicane	Male	13	21	38.810366	1
+3	a644	45	Ramicane	Female	7	17	32.978522	1
+4	c458	30	Ramicane	Female	23	20	38.342008	2
+[203]
+
+
+
+# Ramicane quartiles and IQR
+# Determine outliers using upper and lower bounds
+Ramicane_tumors = Ramicane_merge["Tumor Volume (mm3)"]
+
+quartiles =Ramicane_tumors.quantile([.25,.5,.75])
+lowerq = quartiles[0.25]
+upperq = quartiles[0.75]
+iqr = upperq-lowerq
+
+
+
+The lower quartile of Ramicane tumors is: 31.56046955
+The upper quartile of Ramicane tumors is: 40.65900627
+The interquartile range of Ramicane tumors is: 9.098536719999998
+The median of Ramicane tumors is: 36.56165229 
+Values below 17.912664470000003 could be outliers.
+Values above 54.30681135 could be outliers.
+[204]
+
+
+
+# Infubinol 
+# Determine outliers using upper and lower bounds
+
+Infubinol_last = Infubinol_df.groupby('Mouse ID').max()['Timepoint']
+Infubinol_vol = pd.DataFrame(Infubinol_last)
+Infubinol_merge = pd.merge(Infubinol_vol, pymaceuticals_df, on=("Mouse ID","Timepoint"),how="left")
+Infubinol_merge.head()
+Mouse ID	Timepoint	Drug Regimen	Sex	Age_months	Weight (g)	Tumor Volume (mm3)	Metastatic Sites
+0	a203	45	Infubinol	Female	20	23	67.973419	2
+1	a251	45	Infubinol	Female	21	25	65.525743	1
+2	a577	30	Infubinol	Female	6	25	57.031862	2
+3	a685	45	Infubinol	Male	8	30	66.083066	3
+4	c139	45	Infubinol	Male	11	28	72.226731	2
+[205]
+
+
+
+print(f"Values above {upper_bound} could be outliers.")
+
+The lower quartile of Infubinol tumors is: 54.04860769
+The upper quartile of Infubinol tumors is: 65.52574285
+The interquartile range of Infubinol tumors is: 11.477135160000003
+The median of Infubinol tumors is: 60.16518046 
+Values below 36.83290494999999 could be outliers.
+Values above 82.74144559000001 could be outliers.
+[206]
+
+
+
+# Ceftamin
+Ceftamin_last = Ceftamin_df.groupby('Mouse ID').max()['Timepoint']
+Ceftamin_vol = pd.DataFrame(Ceftamin_last)
+Ceftamin_merge = pd.merge(Ceftamin_vol, pymaceuticals_df, on=("Mouse ID","Timepoint"),how="left")
+Ceftamin_merge.head()
+Mouse ID	Timepoint	Drug Regimen	Sex	Age_months	Weight (g)	Tumor Volume (mm3)	Metastatic Sites
+0	a275	45	Ceftamin	Female	20	28	62.999356	3
+1	b447	0	Ceftamin	Male	2	30	45.000000	0
+2	b487	25	Ceftamin	Female	6	28	56.057749	1
+3	b759	30	Ceftamin	Female	12	25	55.742829	1
+4	f436	15	Ceftamin	Female	3	25	48.722078	2
+[207]
+
+
+
+print(f"Values below {lower_bound} could be outliers.")
+print(f"Values above {upper_bound} could be outliers.")
+The lower quartile of treatment is: 48.72207785
+The upper quartile of temperatures is: 64.29983003
+The interquartile range of temperatures is: 15.577752179999997
+The the median of temperatures is: 59.85195552 
+Values below 25.355449580000002 could be outliers.
+Values above 87.66645829999999 could be outliers.
+[214]
+
+
+
+# Generate a box plot of the final tumor volume of each mouse across four regimens of interest
+data_to_plot = [Capomulin_tumors, Ramicane_tumors, Infubinol_tumors, Ceftamin_tumors]
+Regimen= ['Capomulin', 'Ramicane', 'Infubinol','Ceftamin']
+
+# Plot boxplot
+plt.boxplot(data_to_plot, labels = Regimen)
+
+# Add title and labels to boxplot
+plt.title('Final Tumor Volume by Drug')
+plt.ylabel('Final Tumor Volume (mm3)')
+
+
+Line and Scatter Plots
+[226]
+
+
+
+
+# Add labels and title to plot
+plt.xlabel("Time (days)")
+plt.ylabel("Tumor Volume (mm3)")
+plt.title("Capomulin Treatment of Mouse s185")
+
+# Display plot
+plt.show()
+
+[242]
+
+
+
+# Generate a scatter plot of mouse weight versus average tumor volume for the Capomulin regimen
+
+avg_capm_vol =Capomulin_df.groupby(['Mouse ID']).mean()
+
+
+plt.scatter(avg_capm_vol['Weight (g)'],avg_capm_vol['Tumor Volume (mm3)'],color="blue")
+plt.title('Mouse Weight Versus Average Tumor Volume')
+plt.xlabel('Weight (g)')
+plt.ylabel('Averag Tumor Volume (mm3)')
+
+
+
+Correlation and Regression
+[244]
+
+
+
+# Calculate the correlation coefficient and linear regression model 
+# for mouse weight and average tumor volume for the Capomulin regimen
+
+# Calculate the correlation coefficient between mouse weight and average tumor volume
+# correlation = st.pearsonr(x,y)
+x_values = avg_capm_vol['Weight (g)']
+y_values = avg_capm_vol['Tumor Volume (mm3)']
+
+corr=round(st.pearsonr(avg_capm_vol['Weight (g)'],avg_capm_vol['Tumor Volume (mm3)'])[0],2)
+print(f"The correlation between mouse weight and average tumor volume is {corr}")
+
+The correlation between mouse weight and average tumor volume is 0.84
+[256]
+
+
+
+plt.scatter(x_values,y_values)
+plt.plot(x_values,regress_values,"r-")
+
+print(f"The r-squared is: {rvalue**2}")
+
+# Annotate linear regression
+plt.annotate(line_eq,(20,37),fontsize=15,color="red")
+
+# Add labels and title to plot
+plt.xlabel("Weight (g)")
+
+y = 0.95x + 21.55
+The r-squared is: 0.7088568047708717
+
+[-]
+
+
+
+
+
+
+
+
+
+
